@@ -3,6 +3,32 @@ const Train = require('../models/Train');
 const User = require('../models/User');
 const Station = require('../models/Station');
 
+const formatError = (err) => {
+  if (!err) return 'Unknown error';
+
+  const details = [
+    err.message,
+    err.details,
+    err.hint,
+    err.code ? `code=${err.code}` : null,
+    err.status ? `status=${err.status}` : null,
+  ].filter(Boolean);
+
+  if (details.length > 0) return details.join(' | ');
+
+  try {
+    const serialized = JSON.stringify(err);
+    if (serialized && serialized !== '{}' && serialized !== '{"message":""}') {
+      return serialized;
+    }
+  } catch {
+    const fallback = String(err);
+    if (fallback && fallback !== '[object Object]') return fallback;
+  }
+
+  return 'Supabase request failed without details. Check SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, network access, and that backend/supabase_schema.sql has been run.';
+};
+
 const seedData = async () => {
   try {
     const trainCount = await Train.countDocuments();
@@ -148,7 +174,7 @@ const seedData = async () => {
       console.log('✅ Stations seeded!');
     }
   } catch (err) {
-    console.error('❌ Seeder error:', err);
+    console.error('❌ Seeder error:', formatError(err));
   }
 };
 
