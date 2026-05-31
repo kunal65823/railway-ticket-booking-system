@@ -1,5 +1,5 @@
 // Quick test script to validate Supabase connection and table access
-require('dotenv').config();
+require('./loadEnv');
 const supabase = require('./supabaseClient');
 
 async function test() {

@@ -76,7 +76,7 @@ const Booking = {
   },
 
   async countDocuments(query = {}) {
-    let builder = supabase.from(TABLE).select('id', { count: 'exact', head: true });
+    let builder = supabase.from(TABLE).select('id', { count: 'exact' }).limit(0);
     builder = buildFilter(query, builder);
     const { count, error } = await builder;
     if (error) throw error;
