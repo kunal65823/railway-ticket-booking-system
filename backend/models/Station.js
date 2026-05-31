@@ -27,6 +27,20 @@ const Station = {
     if (error) throw error;
     return (data || []).map(attachId);
   },
+
+  async countDocuments(query = {}) {
+    let builder = supabase.from(TABLE).select('id', { count: 'exact', head: true });
+    builder = buildFilter(query, builder);
+    const { count, error } = await builder;
+    if (error) throw error;
+    return count || 0;
+  },
+
+  async create(payload) {
+    const { data, error } = await supabase.from(TABLE).insert(payload).select().single();
+    if (error) throw error;
+    return attachId(data);
+  },
 };
 
 module.exports = Station;

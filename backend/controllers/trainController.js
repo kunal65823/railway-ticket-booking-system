@@ -56,7 +56,7 @@ exports.getAllTrains = async (req, res) => {
     const trains = await Train.find(query, {
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
-      order: { column: 'created_at', ascending: false },
+      order: { column: 'createdAt', ascending: false },
     });
 
     const total = await Train.countDocuments(query);

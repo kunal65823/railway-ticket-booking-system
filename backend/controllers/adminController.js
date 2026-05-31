@@ -28,7 +28,7 @@ exports.getAnalytics = async (req, res) => {
     const recentBookings = await Booking.find({}, {
       page: 1,
       limit: 10,
-      order: { column: 'created_at', ascending: false },
+      order: { column: 'createdAt', ascending: false },
     });
 
     const sixMonthsAgo = new Date();
@@ -78,7 +78,7 @@ exports.getAllUsers = async (req, res) => {
     const users = await User.find(query, {
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
-      order: { column: 'created_at', ascending: false },
+      order: { column: 'createdAt', ascending: false },
     });
 
     const total = await User.countDocuments(query);
@@ -99,7 +99,7 @@ exports.getAllBookings = async (req, res) => {
     const bookings = await Booking.find(query, {
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
-      order: { column: 'created_at', ascending: false },
+      order: { column: 'createdAt', ascending: false },
     });
 
     const total = await Booking.countDocuments(query);
