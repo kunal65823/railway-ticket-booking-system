@@ -81,6 +81,7 @@ try {
 app.use('/api/auth',         require('./routes/auth'));
 app.use('/api/trains',       require('./routes/trains'));
 app.use('/api/bookings',     require('./routes/bookings'));
+app.use('/api/payments',     require('./routes/payments'));
 app.use('/api/pnr',          require('./routes/pnr'));
 app.use('/api/admin',        require('./routes/admin'));
 app.use('/api/stations',     require('./routes/stations'));

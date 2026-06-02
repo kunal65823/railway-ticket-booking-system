@@ -2,69 +2,25 @@
 const Booking = require('../models/Booking');
 const Train = require('../models/Train');
 const qrcode = require('qrcode');
+const { buildBookingData, buildBookingQuote } = require('../services/bookingQuote');
 
 // @route POST /api/bookings
 exports.createBooking = async (req, res) => {
   try {
-    const { trainId, journeyDate, seatClass, passengers, contactInfo } = req.body;
-
-    if (!trainId || !journeyDate || !seatClass || !passengers || !passengers.length) {
-      return res.status(400).json({ success: false, message: 'All fields are required.' });
-    }
-
-    const train = await Train.findById(trainId);
-    if (!train || !train.isActive) {
-      return res.status(404).json({ success: false, message: 'Train not found.' });
-    }
-    if (train.availableSeats < passengers.length) {
-      return res.status(400).json({ success: false, message: 'Not enough seats available.' });
-    }
-
-    const multipliers = { General: 1.0, Sleeper: 1.3, '3AC': 1.8, '2AC': 2.5, '1AC': 3.5 };
-    const farePerPassenger = Math.round(train.baseFare * (multipliers[seatClass] || 1.0));
-    const baseFare = farePerPassenger * passengers.length;
-    const taxes = Math.round(baseFare * 0.05);
-    const totalFare = baseFare + taxes;
-
-    const enrichedPassengers = passengers.map((p) => ({
-      ...p,
-      seatNumber: `${seatClass.replace(/\s/g, '').charAt(0)}${Math.floor(Math.random() * 72) + 1}`,
-    }));
-
-    const bookingData = {
-      user: req.user._id,
-      train: trainId,
-      trainSnapshot: {
-        trainNumber: train.trainNumber,
-        trainName: train.trainName,
-        source: train.source,
-        destination: train.destination,
-        departureTime: train.departureTime,
-        arrivalTime: train.arrivalTime,
-        trainType: train.trainType,
-      },
-      passengers: enrichedPassengers,
-      contactInfo,
-      journeyDate: new Date(journeyDate),
-      seatClass,
-      baseFare,
-      taxes,
-      totalFare,
-    };
-
-    const booking = await Booking.create(bookingData);
+    const quote = await buildBookingQuote(req.body);
+    const booking = await Booking.create(buildBookingData(quote, req.user._id));
 
     const qrData = JSON.stringify({
       pnr: booking.pnrNumber,
-      train: train.trainNumber,
-      date: journeyDate,
-      class: seatClass,
+      train: quote.train.trainNumber,
+      date: quote.journeyDate,
+      class: quote.seatClass,
     });
     const qrCode = await qrcode.toDataURL(qrData);
     await Booking.findByIdAndUpdate(booking._id, { qrCode });
 
-    await Train.findByIdAndUpdate(trainId, {
-      availableSeats: train.availableSeats - passengers.length,
+    await Train.findByIdAndUpdate(quote.train._id, {
+      availableSeats: quote.train.availableSeats - quote.passengers.length,
     });
 
     const updatedBooking = await Booking.findById(booking._id);
@@ -75,7 +31,7 @@ exports.createBooking = async (req, res) => {
       booking: updatedBooking,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(err.statusCode || 500).json({ success: false, message: err.message });
   }
 };
 

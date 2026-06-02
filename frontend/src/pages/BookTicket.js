@@ -1,13 +1,35 @@
 // src/pages/BookTicket.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { bookingAPI, trainAPI } from '../services/api';
+import { paymentAPI, trainAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Train, Plus, Minus, User, Phone, Mail, CreditCard, CheckCircle, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CLASSES = ['General', 'Sleeper', '3AC', '2AC', '1AC'];
 const CLASS_MULTIPLIERS = { General: 1.0, Sleeper: 1.3, '3AC': 1.8, '2AC': 2.5, '1AC': 3.5 };
+const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+
+const loadRazorpayCheckout = () => new Promise((resolve, reject) => {
+  if (window.Razorpay) {
+    resolve(true);
+    return;
+  }
+
+  const existingScript = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
+  if (existingScript) {
+    existingScript.addEventListener('load', () => resolve(true), { once: true });
+    existingScript.addEventListener('error', () => reject(new Error('Razorpay Checkout failed to load')), { once: true });
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = RAZORPAY_SCRIPT_URL;
+  script.async = true;
+  script.onload = () => resolve(true);
+  script.onerror = () => reject(new Error('Razorpay Checkout failed to load'));
+  document.body.appendChild(script);
+});
 
 const BookTicket = () => {
   const { trainId } = useParams();
@@ -60,21 +82,58 @@ const BookTicket = () => {
     return true;
   };
 
+  const getBookingPayload = () => ({
+    trainId,
+    journeyDate,
+    seatClass,
+    passengers: passengers.map(p => ({ ...p, age: parseInt(p.age) })),
+    contactInfo,
+  });
+
   const handleBook = async () => {
     setLoading(true);
     try {
-      const res = await bookingAPI.create({
-        trainId,
-        journeyDate,
-        seatClass,
-        passengers: passengers.map(p => ({ ...p, age: parseInt(p.age) })),
-        contactInfo,
+      const bookingPayload = getBookingPayload();
+      const orderRes = await paymentAPI.createOrder(bookingPayload);
+      await loadRazorpayCheckout();
+
+      await new Promise((resolve, reject) => {
+        const checkout = new window.Razorpay({
+          key: orderRes.keyId,
+          amount: orderRes.order.amount,
+          currency: orderRes.order.currency,
+          name: 'RailAxis',
+          description: `${train.trainName} ticket booking`,
+          order_id: orderRes.order.id,
+          prefill: {
+            name: passengers[0]?.name || user?.name || '',
+            email: contactInfo.email,
+            contact: contactInfo.phone,
+          },
+          theme: { color: '#6366f1' },
+          handler: async (response) => {
+            try {
+              const verifyRes = await paymentAPI.verify({
+                booking: bookingPayload,
+                ...response,
+              });
+              setBooking(verifyRes.booking);
+              setStep(3);
+              toast.success('Payment successful. Ticket booked!');
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          },
+          modal: {
+            ondismiss: () => reject(new Error('Payment cancelled')),
+          },
+        });
+
+        checkout.open();
       });
-      setBooking(res.booking);
-      setStep(3);
-      toast.success('Ticket booked successfully! 🎉');
     } catch (err) {
-      toast.error(err.message || 'Booking failed');
+      toast.error(err.message || 'Payment failed');
     } finally {
       setLoading(false);
     }
@@ -331,11 +390,11 @@ const BookTicket = () => {
                 {/* Payment */}
                 <div className="glass rounded-2xl p-5 border border-white/10">
                   <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                    <CreditCard size={16} className="text-indigo-400" /> Payment (Demo)
+                    <CreditCard size={16} className="text-indigo-400" /> Razorpay Payment
                   </h3>
                   <div className="glass rounded-xl p-4 border border-indigo-500/20 text-center">
-                    <p className="text-xs text-slate-500">This is a demo application.</p>
-                    <p className="text-sm text-indigo-400 mt-1">Payment is simulated. Click confirm to book.</p>
+                    <p className="text-xs text-slate-500">Secured test checkout</p>
+                    <p className="text-sm text-indigo-400 mt-1">Complete payment to confirm your ticket.</p>
                   </div>
                 </div>
 
