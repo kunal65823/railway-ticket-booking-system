@@ -5,13 +5,52 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+require('./utils/loadEnv');
 
 const app = express();
 
 // ─── Security Middleware ───────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
+
+// ─── CORS ──────────────────────────────────────────────────────────────
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = (process.env.FRONTEND_URL || (isProduction ? '' : 'http://localhost:3000'))
+  .split(',')
+  .map((url) => url.trim())
+  .filter(Boolean);
+
+const isLocalOrigin = (origin) => {
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return (
+      !isProduction
+      && ['http:', 'https:'].includes(protocol)
+      && (
+        hostname === 'localhost'
+        || hostname === '127.0.0.1'
+        || hostname === '0.0.0.0'
+        || hostname === '::1'
+        || hostname === '[::1]'
+      )
+    );
+  } catch {
+    return false;
+  }
+};
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || isLocalOrigin(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`CORS blocked origin: ${origin}. Add it to FRONTEND_URL if this is expected.`);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // ─── Rate Limiting ─────────────────────────────────────────────────────
 const limiter = rateLimit({
@@ -21,6 +60,7 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+<<<<<<< HEAD
 // ─── CORS ──────────────────────────────────────────────────────────────
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
   .split(',')
@@ -43,6 +83,8 @@ const corsOptions = {
 app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
+=======
+>>>>>>> f80d4a8508daeecfdd9c841fd8a6bfa2a218daf9
 // ─── Body Parser ───────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -64,7 +106,11 @@ try {
 app.use('/api/auth',         require('./routes/auth'));
 app.use('/api/trains',       require('./routes/trains'));
 app.use('/api/bookings',     require('./routes/bookings'));
+<<<<<<< HEAD
 app.use('/api/payment',      require('./routes/payment'));
+=======
+app.use('/api/payments',     require('./routes/payments'));
+>>>>>>> f80d4a8508daeecfdd9c841fd8a6bfa2a218daf9
 app.use('/api/pnr',          require('./routes/pnr'));
 app.use('/api/admin',        require('./routes/admin'));
 app.use('/api/stations',     require('./routes/stations'));

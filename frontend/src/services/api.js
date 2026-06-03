@@ -59,6 +59,12 @@ export const bookingAPI = {
   cancel: (data) => api.post('/bookings/cancel', data),
 };
 
+// ─── Payment APIs ──────────────────────────────────────────────────────
+export const paymentAPI = {
+  createOrder: (booking) => api.post('/payments/orders', { booking }),
+  verify: (data) => api.post('/payments/verify', data),
+};
+
 // ─── PNR APIs ──────────────────────────────────────────────────────────
 export const pnrAPI = {
   check: (pnr) => api.get(`/pnr/${pnr}`),
