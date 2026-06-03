@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { bookingAPI, trainAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { initializeRazorpayPayment, loadRazorpayScript } from '../utils/razorpay';
 import { Train, Plus, Minus, User, Phone, Mail, CreditCard, CheckCircle, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -28,6 +29,10 @@ const BookTicket = () => {
     if (!train) {
       trainAPI.getById(trainId).then(res => setTrain(res.train)).catch(() => navigate('/search'));
     }
+    // Load Razorpay script
+    loadRazorpayScript().then(success => {
+      if (!success) toast.error('Failed to load payment gateway');
+    });
   }, [trainId]);
 
   const farePerPassenger = train ? Math.round(train.baseFare * CLASS_MULTIPLIERS[seatClass]) : 0;
@@ -63,16 +68,18 @@ const BookTicket = () => {
   const handleBook = async () => {
     setLoading(true);
     try {
-      const res = await bookingAPI.create({
+      const bookingData = {
         trainId,
         journeyDate,
         seatClass,
         passengers: passengers.map(p => ({ ...p, age: parseInt(p.age) })),
         contactInfo,
-      });
-      setBooking(res.booking);
+      };
+
+      // Initialize Razorpay payment
+      const bookedTicket = await initializeRazorpayPayment(bookingData);
+      setBooking(bookedTicket);
       setStep(3);
-      toast.success('Ticket booked successfully! 🎉');
     } catch (err) {
       toast.error(err.message || 'Booking failed');
     } finally {
@@ -162,9 +169,13 @@ const BookTicket = () => {
                 <span>Service tax (5%)</span>
                 <span>₹{booking.taxes}</span>
               </div>
-              <div className="flex justify-between font-bold text-lg border-t border-white/10 pt-3">
+              <div className="flex justify-between font-bold text-lg border-t border-white/10 pt-3 mb-3">
                 <span className="text-white">Total Paid</span>
                 <span className="gradient-text">₹{booking.totalFare}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Payment Status</span>
+                <span className="badge-confirmed px-3 py-1 rounded-full text-xs font-medium">{booking.paymentStatus || 'Paid'}</span>
               </div>
             </div>
           </div>

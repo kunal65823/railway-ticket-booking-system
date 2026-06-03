@@ -27,7 +27,7 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
   .map((url) => url.trim())
   .filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -35,9 +35,13 @@ app.use(cors({
     return callback(new Error('CORS policy does not allow access from the specified origin.'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With'],
+  optionsSuccessStatus: 204,
+};
+
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // ─── Body Parser ───────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
@@ -60,6 +64,7 @@ try {
 app.use('/api/auth',         require('./routes/auth'));
 app.use('/api/trains',       require('./routes/trains'));
 app.use('/api/bookings',     require('./routes/bookings'));
+app.use('/api/payment',      require('./routes/payment'));
 app.use('/api/pnr',          require('./routes/pnr'));
 app.use('/api/admin',        require('./routes/admin'));
 app.use('/api/stations',     require('./routes/stations'));

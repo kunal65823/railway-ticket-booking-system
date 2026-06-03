@@ -77,4 +77,10 @@ export const stationAPI = {
   search: (q) => api.get('/stations', { params: { q } }),
 };
 
+// ─── Payment APIs ──────────────────────────────────────────────────────
+export const paymentAPI = {
+  createOrder: (bookingData) => api.post('/payment/create-order', { bookingData }),
+  verifyPayment: (data) => api.post('/payment/verify', data),
+};
+
 export default api;

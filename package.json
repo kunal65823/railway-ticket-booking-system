@@ -1,4 +1,9 @@
 {
+  "scripts": {
+    "start:backend": "npm --prefix backend run dev",
+    "start:frontend": "npm --prefix frontend start",
+    "start": "npm run start:frontend"
+  },
   "dependencies": {
     "mongodb": "^7.2.0",
     "mongoose": "^9.6.2"
